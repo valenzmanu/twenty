@@ -4,7 +4,7 @@ const crypto = require('node:crypto');
 
 const envFile = '.env';
 const bootstrapFile = 'admin-bootstrap.txt';
-const endpoint = 'http://127.0.0.1:3000/graphql';
+const endpoint = 'http://127.0.0.1:3000/metadata';
 
 const env = Object.fromEntries(
   fs
