@@ -1,0 +1,124 @@
+name: twenty-crm
+
+services:
+  server:
+    image: twentycrm/twenty:${TAG}
+    container_name: twenty-crm-server
+    volumes:
+      - server-local-data:/app/packages/twenty-server/.local-storage
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      NODE_PORT: 3000
+      PG_DATABASE_URL: postgres://${PG_DATABASE_USER}:${PG_DATABASE_PASSWORD}@${PG_DATABASE_HOST:-db}:${PG_DATABASE_PORT:-5432}/default
+      SERVER_URL: ${SERVER_URL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      DISABLE_DB_MIGRATIONS: ${DISABLE_DB_MIGRATIONS:-false}
+      DISABLE_CRON_JOBS_REGISTRATION: ${DISABLE_CRON_JOBS_REGISTRATION:-false}
+      STORAGE_TYPE: ${STORAGE_TYPE:-local}
+      STORAGE_S3_REGION: ${STORAGE_S3_REGION:-}
+      STORAGE_S3_NAME: ${STORAGE_S3_NAME:-}
+      STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      FALLBACK_ENCRYPTION_KEY: ${FALLBACK_ENCRYPTION_KEY:-}
+      APP_SECRET: ${APP_SECRET}
+      AUTH_PASSWORD_ENABLED: ${AUTH_PASSWORD_ENABLED:-true}
+      IS_EMAIL_VERIFICATION_REQUIRED: ${IS_EMAIL_VERIFICATION_REQUIRED:-false}
+      EMAIL_DRIVER: ${EMAIL_DRIVER:-logger}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-noreply@instabloom.gt}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-InstaBloom CRM}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
+      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD:-}
+      EMAIL_SMTP_NO_TLS: ${EMAIL_SMTP_NO_TLS:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: curl --fail http://localhost:3000/healthz
+      interval: 5s
+      timeout: 5s
+      retries: 40
+      start_period: 20s
+    restart: always
+
+  worker:
+    image: twentycrm/twenty:${TAG}
+    container_name: twenty-crm-worker
+    volumes:
+      - server-local-data:/app/packages/twenty-server/.local-storage
+    command: ["yarn", "worker:prod"]
+    environment:
+      PG_DATABASE_URL: postgres://${PG_DATABASE_USER}:${PG_DATABASE_PASSWORD}@${PG_DATABASE_HOST:-db}:${PG_DATABASE_PORT:-5432}/default
+      SERVER_URL: ${SERVER_URL}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
+      DISABLE_DB_MIGRATIONS: "true"
+      DISABLE_CRON_JOBS_REGISTRATION: "true"
+      STORAGE_TYPE: ${STORAGE_TYPE:-local}
+      STORAGE_S3_REGION: ${STORAGE_S3_REGION:-}
+      STORAGE_S3_NAME: ${STORAGE_S3_NAME:-}
+      STORAGE_S3_ENDPOINT: ${STORAGE_S3_ENDPOINT:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      FALLBACK_ENCRYPTION_KEY: ${FALLBACK_ENCRYPTION_KEY:-}
+      APP_SECRET: ${APP_SECRET}
+      AUTH_PASSWORD_ENABLED: ${AUTH_PASSWORD_ENABLED:-true}
+      IS_EMAIL_VERIFICATION_REQUIRED: ${IS_EMAIL_VERIFICATION_REQUIRED:-false}
+      EMAIL_DRIVER: ${EMAIL_DRIVER:-logger}
+      EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:-noreply@instabloom.gt}
+      EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-InstaBloom CRM}
+      EMAIL_SMTP_HOST: ${EMAIL_SMTP_HOST:-}
+      EMAIL_SMTP_PORT: ${EMAIL_SMTP_PORT:-587}
+      EMAIL_SMTP_USER: ${EMAIL_SMTP_USER:-}
+      EMAIL_SMTP_PASSWORD: ${EMAIL_SMTP_PASSWORD:-}
+      EMAIL_SMTP_NO_TLS: ${EMAIL_SMTP_NO_TLS:-false}
+    depends_on:
+      db:
+        condition: service_healthy
+      server:
+        condition: service_healthy
+    restart: always
+
+  db:
+    image: postgres:16
+    container_name: twenty-crm-db
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: default
+      POSTGRES_USER: ${PG_DATABASE_USER}
+      POSTGRES_PASSWORD: ${PG_DATABASE_PASSWORD}
+    healthcheck:
+      test: pg_isready -U ${PG_DATABASE_USER} -h localhost -d default
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: twenty-crm-redis
+    command: ["redis-server", "--maxmemory-policy", "noeviction"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: always
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: twenty-crm-tunnel
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      server:
+        condition: service_healthy
+    restart: always
+
+volumes:
+  db-data:
+  server-local-data:
