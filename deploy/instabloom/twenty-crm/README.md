@@ -30,4 +30,4 @@ The real `.env` lives only on the VPS and is ignored by Git. Required secret val
 - `APP_SECRET`
 - `CLOUDFLARE_TUNNEL_TOKEN`
 
-SMTP is not configured yet. Until SMTP is added, Twenty logs system emails instead of sending them.
+SMTP is configured through Resend. The API key is stored only in the remote `.env` as `EMAIL_SMTP_PASSWORD`.
