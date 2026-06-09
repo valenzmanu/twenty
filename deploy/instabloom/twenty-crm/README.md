@@ -31,3 +31,4 @@ The real `.env` lives only on the VPS and is ignored by Git. Required secret val
 - `CLOUDFLARE_TUNNEL_TOKEN`
 
 SMTP is configured through Resend. The API key is stored only in the remote `.env` as `EMAIL_SMTP_PASSWORD`.
+The CRM sends from `noreply@mail.instabloom.gt`, which must remain verified in Resend.
